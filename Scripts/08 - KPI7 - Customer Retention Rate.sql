@@ -5,6 +5,9 @@
 -- Inactive customer:  did not order in a given month but did order in the prior month
 -- Resurrected customer:  did not order in the prior month but did order in the given month
 -- Churned customer:  did not order in a given month or in the prior month
+
+-- Knowing about LAG() and building a calendar-customer matrix, we can perform a customer
+-- analysis over any time period, not just a single one.
 WITH FirstCustomerOrder AS
 (
 	SELECT

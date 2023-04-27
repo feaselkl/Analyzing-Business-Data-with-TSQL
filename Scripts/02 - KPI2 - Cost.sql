@@ -1,13 +1,37 @@
 /* KPI 2:  Cost */
 
--- This looks like cost, but is total purchases
--- One definition of cost but we typically want cost of goods sold!
-SELECT
-	SUM(pol.ReceivedOuters * pol.ExpectedUnitPricePerOuter) AS Cost
-FROM Purchasing.PurchaseOrderLines pol;
-
 -- Estimate cost of goods sold
 -- This is a lot harder to do in Wide World Importers than we'd hope!
+
+-- We can use a Common Table Expression (CTE) to act as a subquery
+-- CTEs take the following shape:  WITH cteName AS ()
+-- We can reference the results of a CTE as though it were a table
+-- Note that CTEs are not materialized (unlike Oracle/Postgres)
+
+-- We want the quantity per stock item ID and to multiply it by
+-- latest cost price.  Step 1:  get quantity sold per stock item:
+SELECT
+	ol.StockItemID,
+	SUM(ol.Quantity) AS Quantity
+FROM Sales.OrderLines ol
+GROUP BY
+	ol.StockItemID;
+
+-- To use this, we'll wrap it in a CTE
+WITH orders AS
+(
+	SELECT
+		ol.StockItemID,
+		SUM(ol.Quantity) AS Quantity
+	FROM Sales.OrderLines ol
+	GROUP BY
+		ol.StockItemID
+)
+SELECT
+	*
+FROM orders o;
+
+-- Now we can join the results to other tables
 WITH orders AS
 (
 	SELECT
@@ -30,6 +54,8 @@ FROM Warehouse.StockItems si
 		ON si.StockItemID = o.StockItemID;
 
 -- How much has WWI spent on COGS?
+-- Note that we're aggregating on two separate levels.
+-- Having an intermediary CTE makes it easier for us to do this.
 WITH orders AS
 (
 	SELECT

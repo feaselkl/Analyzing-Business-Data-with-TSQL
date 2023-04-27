@@ -1,5 +1,9 @@
 /* KPI 1:  Revenue */
 
+-- This script serves as a baseline of what I expect you to know:
+-- SELECT, FROM, INNER JOIN, WHERE, GROUP BY, HAVING, ORDER BY
+-- Aggregation and how it impacts non-aggregated columns
+
 -- Calculate revenue per order line
 SELECT
 	SUM(ol.UnitPrice * ol.Quantity) AS Revenue
