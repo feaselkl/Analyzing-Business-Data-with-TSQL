@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 12:  Top Customers by Month */
 -- Who are the top 10 customers for the month of August, 2015
 -- in terms of number of orders?

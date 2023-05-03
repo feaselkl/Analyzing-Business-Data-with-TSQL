@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 11:  Customer Percentile by Sales */
 
 -- Prior to 2022, we use PERCENTILE_CONT(), which is a window function

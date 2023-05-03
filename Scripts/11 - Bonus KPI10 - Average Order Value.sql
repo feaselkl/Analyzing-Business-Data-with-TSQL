@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 10:  Average Order Value */
 
 -- Calculating order value

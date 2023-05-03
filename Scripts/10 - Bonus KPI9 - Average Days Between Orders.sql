@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 9:  Average Days between Orders */
 WITH Orders AS
 (

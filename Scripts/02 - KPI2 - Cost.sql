@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 2:  Cost */
 
 -- Estimate cost of goods sold

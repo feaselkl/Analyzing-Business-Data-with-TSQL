@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 7:  Customer Retention Rate */
 -- Quick reminder on customer status:
 -- New customer:  first order was in a given month

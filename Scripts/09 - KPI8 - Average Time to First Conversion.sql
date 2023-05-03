@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 8:  Average Time to First Conversion */
 
 -- The APPLY operator allows us to perform a function for each row on the left-hand side.

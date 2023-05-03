@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 5: Number of Customers */
 
 -- Let's say we want to know the beginning of the month based on the current date.

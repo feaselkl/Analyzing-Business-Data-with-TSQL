@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 IF (OBJECT_ID('dbo.Calendar') IS NULL)
 BEGIN
 	CREATE TABLE dbo.Calendar

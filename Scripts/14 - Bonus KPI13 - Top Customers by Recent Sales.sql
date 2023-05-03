@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 13:  Top Customers by Recent Sales */
 
 -- 5 latest orders for each customer

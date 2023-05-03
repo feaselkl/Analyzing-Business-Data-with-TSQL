@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 1:  Revenue */
 
 -- This script serves as a baseline of what I expect you to know:

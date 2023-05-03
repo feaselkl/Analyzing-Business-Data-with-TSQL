@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 4:  Customer Lifetime Value */
 
 -- Start with revenue per customer

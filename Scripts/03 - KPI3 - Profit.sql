@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 3:  Profit */
 
 -- We will define profit:  Profit = Revenue - Cost of Goods Sold

@@ -1,3 +1,5 @@
+USE [WideWorldImporters]
+GO
 /* KPI 6:  Customers by Geography */
 
 -- Overall customers by sales territory
