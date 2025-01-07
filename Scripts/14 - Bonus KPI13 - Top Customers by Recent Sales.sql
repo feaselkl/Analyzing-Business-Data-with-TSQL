@@ -34,7 +34,7 @@ ORDER BY
 	o.OrderID;
 
 -- Top 20 customers based on most recent AOV
-SELECT TOP(20)
+SELECT TOP(20) WITH TIES
 	sc.CustomerID,
 	sc.CustomerName,
 	AVG(ol.TotalRevenue) AS AverageOrderValue

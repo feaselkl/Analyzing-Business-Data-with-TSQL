@@ -52,8 +52,8 @@ IF NOT EXISTS
 )
 BEGIN
 	DECLARE
-		@StartDate DATE = '18000101',
-		@NumberOfYears INT = 726;
+		@StartDate DATE = '19000101',
+		@NumberOfYears INT = 150;
  
 	--Remove ambiguity with regional settings.
 	SET DATEFIRST 7;
@@ -573,3 +573,9 @@ BEGIN
 		INNER JOIN dbo.HolidayDef h
 			ON hd.HolidayKey = h.HolidayKey;
 END
+GO
+SELECT TOP(100) * FROM dbo.Calendar;
+GO
+-- Watch out for holiday clobbering!
+SELECT TOP(100) * FROM dbo.Calendar WHERE [date] = '2024-12-25';
+GO

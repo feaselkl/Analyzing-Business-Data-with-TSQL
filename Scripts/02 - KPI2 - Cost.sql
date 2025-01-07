@@ -74,3 +74,21 @@ FROM Warehouse.StockItems si
 		ON si.StockItemID = sih.StockItemID
 	INNER JOIN orders o
 		ON si.StockItemID = o.StockItemID;
+
+-- Bonus: formatting
+WITH orders AS
+(
+	SELECT
+		ol.StockItemID,
+		SUM(ol.Quantity) AS Quantity
+	FROM Sales.OrderLines ol
+	GROUP BY
+		ol.StockItemID
+)
+SELECT
+	FORMAT(SUM(o.Quantity * sih.LastCostPrice), N'$0,###.##') AS TotalCost
+FROM Warehouse.StockItems si
+	INNER JOIN Warehouse.StockItemHoldings sih
+		ON si.StockItemID = sih.StockItemID
+	INNER JOIN orders o
+		ON si.StockItemID = o.StockItemID;

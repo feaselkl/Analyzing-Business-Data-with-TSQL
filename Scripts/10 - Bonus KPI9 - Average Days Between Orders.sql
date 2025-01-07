@@ -27,10 +27,15 @@ WITH Orders AS
 SELECT
 	cal.CalendarYear,
 	cal.CalendarQuarterName,
-	CAST(AVG(1.0 * DATEDIFF(DAY, o.OrderDate, o.NextOrderDate)) AS DECIMAL(6,2)) AS AverageDaysBetweenOrders
+	CAST(AVG(dbo.DaysBetweenOrders) AS DECIMAL(6,2)) AS AverageDaysBetweenOrders
 FROM Orders o
 	INNER JOIN dbo.Calendar cal
 		ON o.OrderDate = cal.Date
+	CROSS APPLY
+	(
+		SELECT
+			1.0 * DATEDIFF(DAY, o.OrderDate, o.NextOrderDate) AS DaysBetweenOrders
+	) dbo
 GROUP BY
 	cal.CalendarYear,
 	cal.CalendarQuarterName

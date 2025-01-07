@@ -39,6 +39,7 @@ WITH CustomerResults AS
 		c.FirstDayOfMonth = '2015-08-01'
 	GROUP BY
 		o.CustomerID
+	HAVING COUNT(*) >= 7
 )
 SELECT
 	cr.CustomerID,
@@ -50,9 +51,35 @@ FROM CustomerResults cr
 ORDER BY
 	cr.NumberOfOrders DESC;
 
+-- We *could* use WITH TIES here
+WITH CustomerResults AS
+(
+	SELECT
+		o.CustomerID,
+		COUNT(*) AS NumberOfOrders
+	FROM Sales.Orders o
+		INNER JOIN dbo.Calendar c
+			ON o.OrderDate = c.Date
+	WHERE
+		c.FirstDayOfMonth = '2015-08-01'
+	GROUP BY
+		o.CustomerID
+)
+SELECT TOP(10) WITH TIES
+	cr.CustomerID,
+	sc.CustomerName,
+	cr.NumberOfOrders
+FROM CustomerResults cr
+	INNER JOIN Sales.Customers sc
+		ON cr.CustomerID = sc.CustomerID
+ORDER BY
+	cr.NumberOfOrders DESC;
+
 -- Another way to perform these calculations:  ranking window functions.
 -- Three ranking window functions exist:  ROW_NUMBER(), RANK(), DENSE_RANK()
--- ROW_NUMBER() provides a monotonically increasing integer for each row in the set.
+-- (A fourth ranking function, NTILE(), also exists, but we'll ignore it today)
+
+-- ROW_NUMBER() provides a monotonically increasing natural number for each row in the set.
 -- We must include an ORDER BY clause for ROW_NUMBER()
 SELECT TOP(50)
 	c.Date,
@@ -61,8 +88,18 @@ FROM dbo.Calendar c
 ORDER BY
 	c.Date ASC;
 
--- We can also break data out into window partitions using the PARTITION BY clause.
+-- The ranking function's ORDER BY does not have to be the same as
+-- the ORDER BY clause in the window function!
 SELECT TOP(50)
+	c.Date,
+	ROW_NUMBER() OVER (ORDER BY c.Date ASC) AS rownum
+FROM dbo.Calendar c
+ORDER BY
+	c.DayOfWeek ASC,
+	FiscalWeekOfYear ASC;
+
+-- We can also break data out into window partitions using the PARTITION BY clause.
+SELECT
 	c.Date,
 	c.DayName,
 	ROW_NUMBER() OVER (PARTITION BY c.DayName ORDER BY c.Date ASC) AS rownum

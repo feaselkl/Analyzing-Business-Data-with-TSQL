@@ -6,6 +6,9 @@ GO
 -- SELECT, FROM, INNER JOIN, WHERE, GROUP BY, HAVING, ORDER BY
 -- Aggregation and how it impacts non-aggregated columns
 
+-- Check out order lines table
+SELECT TOP(100) * FROM Sales.OrderLines;
+
 -- Calculate revenue per order line
 SELECT
 	SUM(ol.UnitPrice * ol.Quantity) AS Revenue

@@ -4,7 +4,7 @@ GO
 
 -- Prior to 2022, we use PERCENTILE_CONT(), which is a window function
 -- APPROX_PERCENTILE_CONT() is a grouping function which is *much* faster
--- and guaranteed to be within ~3% or so of the real value
+-- and guaranteed to be within ~1.33% or so of the real value
 WITH CustomerSales AS
 (
 	SELECT
@@ -28,13 +28,13 @@ Percentiles AS
 	FROM CustomerSales cs
 )
 SELECT
-	p.P00 AS Minimum,
-	p.P25,
-	p.P50 AS Median,
-	p.P75,
-	p.P95,
-	p.P100 AS Maximum,
-	p.P75 - p.P25 AS IQR
+	FORMAT(p.P00, N'$0,###.##') AS Minimum,
+	FORMAT(p.P25, N'$0,###.##') AS P25,
+	FORMAT(p.P50, N'$0,###.##') AS Median,
+	FORMAT(p.P75, N'$0,###.##') AS P75,
+	FORMAT(p.P95, N'$0,###.##') AS P95,
+	FORMAT(p.P100, N'$0,###.##') AS Maximum,
+	FORMAT(p.P75 - p.P25, N'$0,###.##') AS IQR
 FROM Percentiles p;
 
 -- Now by sales territory
@@ -61,6 +61,7 @@ Percentiles AS
 (
 	SELECT
 		cs.SalesTerritory,
+		COUNT(*) AS NumberOfCustomers,
 		APPROX_PERCENTILE_CONT(0.00) WITHIN GROUP (ORDER BY cs.TotalRevenue) AS P00,
 		APPROX_PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY cs.TotalRevenue) AS P25,
 		APPROX_PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY cs.TotalRevenue) AS P50,
@@ -73,11 +74,14 @@ Percentiles AS
 )
 SELECT
 	p.SalesTerritory,
-	p.P00 AS Minimum,
-	p.P25,
-	p.P50 AS Median,
-	p.P75,
-	p.P95,
-	p.P100 AS Maximum,
-	p.P75 - p.P25 AS IQR
-FROM Percentiles p;
+	p.NumberOfCustomers,
+	FORMAT(p.P00, N'$0,###.##') AS Minimum,
+	FORMAT(p.P25, N'$0,###.##') AS P25,
+	FORMAT(p.P50, N'$0,###.##') AS Median,
+	FORMAT(p.P75, N'$0,###.##') AS P75,
+	FORMAT(p.P95, N'$0,###.##') AS P95,
+	FORMAT(p.P100, N'$0,###.##') AS Maximum,
+	FORMAT(p.P75 - p.P25, N'$0,###.##') AS IQR
+FROM Percentiles p
+ORDER BY
+	SalesTerritory;

@@ -114,11 +114,45 @@ SELECT
 	-- Overall moving average "stabilizes" and becomes tough to move
 	AVG(o.Revenue) OVER (ORDER BY o.OrderDate, o.OrderID) AS MovingAverage,
 	SUM(o.Revenue) OVER (ORDER BY o.OrderDate, o.OrderID
-        ROWS BETWEEN 10 PRECEDING AND CURRENT ROW) AS Last10RunningTotal,
+        ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) AS Last10RunningTotal,
 	-- Last 10 moving average remains fairly easy to move over time
 	AVG(o.Revenue) OVER (ORDER BY o.OrderDate, o.OrderID
-        ROWS BETWEEN 10 PRECEDING AND CURRENT ROW) AS Last10MovingAverage
+        ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) AS Last10MovingAverage
 FROM Orders o
+ORDER BY
+	o.OrderDate ASC,
+	o.OrderID ASC;
+
+-- A bonus for SQL Server 2022: the WINDOW clause
+WITH Orders AS
+(
+	SELECT
+		o.OrderDate,
+		o.OrderID,
+		SUM(ol.UnitPrice * ol.Quantity) AS Revenue
+	FROM Sales.Orders o
+		INNER JOIN Sales.OrderLines ol
+			ON o.OrderID = ol.OrderID
+	WHERE
+		o.CustomerID = 13
+	GROUP BY
+		o.OrderDate,
+		o.OrderID
+)
+SELECT
+	o.OrderDate,
+	o.OrderID,
+	o.Revenue,
+	SUM(o.Revenue) OVER ord AS RunningTotal,
+	-- Overall moving average "stabilizes" and becomes tough to move
+	AVG(o.Revenue) OVER ord AS MovingAverage,
+	SUM(o.Revenue) OVER ord10 AS Last10RunningTotal,
+	-- Last 10 moving average remains fairly easy to move over time
+	AVG(o.Revenue) OVER ord10 AS Last10MovingAverage
+FROM Orders o
+WINDOW
+	ord AS (ORDER BY o.OrderDate, o.OrderID),
+	ord10 AS (ord ROWS BETWEEN 9 PRECEDING AND CURRENT ROW)
 ORDER BY
 	o.OrderDate ASC,
 	o.OrderID ASC;
