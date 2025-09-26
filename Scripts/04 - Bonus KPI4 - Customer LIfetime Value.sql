@@ -1,97 +1,98 @@
-USE [WideWorldImporters]
+USE [WideWorldImporters];
 GO
-/* KPI 4:  Customer Lifetime Value */
 
--- Start with revenue per customer
--- This is a simple definition of CLV
+/* KPI 4: Customer Lifetime Value (CLV) */
+
+-- Revenue per customer
 SELECT
-	o.CustomerID,
-	c.CustomerName,
-	SUM(ol.UnitPrice * ol.Quantity) AS Revenue
-FROM Sales.OrderLines ol
-	INNER JOIN Sales.Orders o
-		ON ol.OrderID = o.OrderID
-	INNER JOIN Sales.Customers c
-		ON o.CustomerID = c.CustomerID
+    o.CustomerID,
+    c.CustomerName,
+    CAST(SUM(ol.UnitPrice * ol.Quantity) AS DECIMAL(18,2)) AS TotalRevenue
+FROM Sales.OrderLines AS ol
+INNER JOIN Sales.Orders AS o
+    ON ol.OrderID = o.OrderID
+INNER JOIN Sales.Customers AS c
+    ON o.CustomerID = c.CustomerID
 GROUP BY
-	o.CustomerID,
-	c.CustomerName
+    o.CustomerID,
+    c.CustomerName
 ORDER BY
-	Revenue DESC;
+    TotalRevenue DESC;
 
--- We might be more interested in *profit* per customer
-WITH orders AS
+
+
+-- Profit per customer using cost from StockItemHoldings
+WITH CustomerOrders AS
 (
-	SELECT
-		o.CustomerID,
-		ol.StockItemID,
-		SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-		INNER JOIN Sales.Orders o
-			ON ol.OrderID = o.OrderID
-	GROUP BY
-		o.CustomerID,
-		ol.StockItemID
+    SELECT
+        o.CustomerID,
+        ol.StockItemID,
+        CAST(SUM(ol.UnitPrice * ol.Quantity) AS DECIMAL(18,2)) AS Revenue,
+        SUM(ol.Quantity) AS Quantity
+    FROM Sales.OrderLines AS ol
+    INNER JOIN Sales.Orders AS o
+        ON ol.OrderID = o.OrderID
+    GROUP BY
+        o.CustomerID,
+        ol.StockItemID
 )
 SELECT
-	o.CustomerID,
-	c.CustomerName,
-	SUM(o.Revenue) AS Revenue,
-	SUM(o.Quantity * sih.LastCostPrice) AS Cost,
-	SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS Profit
-FROM orders o
-	INNER JOIN Warehouse.StockItems si
-		ON si.StockItemID = o.StockItemID
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN Sales.Customers c
-		ON o.CustomerID = c.CustomerID
+    co.CustomerID,
+    c.CustomerName,
+    CAST(SUM(co.Revenue) AS DECIMAL(18,2)) AS TotalRevenue,
+    CAST(SUM(co.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS TotalCost,
+    CAST(SUM(co.Revenue) - SUM(co.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS TotalProfit
+FROM CustomerOrders AS co
+INNER JOIN Warehouse.StockItems AS si
+    ON si.StockItemID = co.StockItemID
+INNER JOIN Warehouse.StockItemHoldings AS sih
+    ON si.StockItemID = sih.StockItemID
+INNER JOIN Sales.Customers AS c
+    ON co.CustomerID = c.CustomerID
 GROUP BY
-	o.CustomerID,
-	c.CustomerName
+    co.CustomerID,
+    c.CustomerName
 ORDER BY
-	Profit DESC;
+    TotalProfit DESC;
 
--- We typically want to slice measures like CLV across
--- multiple dimensions, such as customer category and size.
--- This is a transactional system, so we have to fight a little bit.
-WITH orders AS
+
+
+-- Profit per customer with CustomerCategory, excluding novelty shops
+WITH CustomerOrders AS
 (
-	SELECT
-		o.CustomerID,
-		ol.StockItemID,
-		SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-		INNER JOIN Sales.Orders o
-			ON ol.OrderID = o.OrderID
-	GROUP BY
-		o.CustomerID,
-		ol.StockItemID
+    SELECT
+        o.CustomerID,
+        ol.StockItemID,
+        CAST(SUM(ol.UnitPrice * ol.Quantity) AS DECIMAL(18,2)) AS Revenue,
+        SUM(ol.Quantity) AS Quantity
+    FROM Sales.OrderLines AS ol
+    INNER JOIN Sales.Orders AS o
+        ON ol.OrderID = o.OrderID
+    GROUP BY
+        o.CustomerID,
+        ol.StockItemID
 )
 SELECT
-	o.CustomerID,
-	c.CustomerCategoryID,
-	c.CustomerName,
-	SUM(o.Revenue) AS Revenue,
-	SUM(o.Quantity * sih.LastCostPrice) AS Cost,
-	SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS Profit
-FROM orders o
-	INNER JOIN Warehouse.StockItems si
-		ON si.StockItemID = o.StockItemID
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN Sales.Customers c
-		ON o.CustomerID = c.CustomerID
-WHERE
-	c.CustomerCategoryID <> 3 /* Novelty shops */
+    co.CustomerID,
+    c.CustomerCategoryID,
+    c.CustomerName,
+    CAST(SUM(co.Revenue) AS DECIMAL(18,2)) AS TotalRevenue,
+    CAST(SUM(co.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS TotalCost,
+    CAST(SUM(co.Revenue) - SUM(co.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS TotalProfit
+FROM CustomerOrders AS co
+INNER JOIN Warehouse.StockItems AS si
+    ON si.StockItemID = co.StockItemID
+INNER JOIN Warehouse.StockItemHoldings AS sih
+    ON si.StockItemID = sih.StockItemID
+INNER JOIN Sales.Customers AS c
+    ON co.CustomerID = c.CustomerID
+WHERE c.CustomerCategoryID NOT IN (3) -- Exclude novelty shops
 GROUP BY
-	o.CustomerID,
-	c.CustomerCategoryID,
-	c.CustomerName
+    co.CustomerID,
+    c.CustomerCategoryID,
+    c.CustomerName
 HAVING
-	SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) > 170000
+    SUM(co.Revenue) - SUM(co.Quantity * sih.LastCostPrice) > 170000
 ORDER BY
-	Profit DESC;
+    TotalProfit DESC;
 GO
