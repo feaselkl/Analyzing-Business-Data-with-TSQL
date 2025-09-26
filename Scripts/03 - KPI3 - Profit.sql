@@ -1,153 +1,95 @@
-USE [WideWorldImporters]
+USE [WideWorldImporters];
 GO
-/* KPI 3:  Profit */
 
--- We will define profit:  Profit = Revenue - Cost of Goods Sold
--- There's a lot more to accounting profit than this, naturally,
--- but this isn't an accounting course!
+/* ============================================================
+   KPI 3: Profit
+   Profit = Revenue - Cost of Goods Sold
+   ============================================================
+   Steps:
+   1. Calculate revenue and quantity per StockItemID
+   2. Join with StockItemHoldings to get cost
+   3. Derive profit at both item-level and total-level
+   ============================================================
+*/
 
--- We can calculate revenue, cost, and therefore profit
--- using the same combination of aggregation and a CTE that we used for cost.
-WITH orders AS
+/* Step 1: Base CTE - revenue and quantity per stock item */
+WITH OrderMetrics AS
 (
-	SELECT
-		ol.StockItemID,
-		SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
+    SELECT
+        ol.StockItemID,
+        SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
+        SUM(ol.Quantity) AS Quantity
+    FROM Sales.OrderLines ol
+    GROUP BY ol.StockItemID
+)
+
+/* Step 2: Total Revenue, Cost, and Profit */
+SELECT
+    CAST(SUM(o.Revenue) AS DECIMAL(18,2)) AS TotalRevenue,
+    CAST(SUM(o.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS TotalCost,
+    CAST(SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS TotalProfit
+FROM OrderMetrics o
+INNER JOIN Warehouse.StockItems si
+    ON o.StockItemID = si.StockItemID
+INNER JOIN Warehouse.StockItemHoldings sih
+    ON si.StockItemID = sih.StockItemID;
+
+
+/* Step 3: Most Profitable Products (all-time) */
+WITH OrderMetrics AS
+(
+    SELECT
+        ol.StockItemID,
+        SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
+        SUM(ol.Quantity) AS Quantity
+    FROM Sales.OrderLines ol
+    GROUP BY ol.StockItemID
 )
 SELECT
-	SUM(o.Revenue) AS TotalRevenue,
-	SUM(o.Quantity * sih.LastCostPrice) AS TotalCost,
-	SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS Profit
-FROM Warehouse.StockItems si
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN orders o
-		ON si.StockItemID = o.StockItemID;
+    si.StockItemName,
+    CAST(SUM(o.Revenue) AS DECIMAL(18,2)) AS Revenue,
+    CAST(SUM(o.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS Cost,
+    CAST(SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS Profit
+FROM OrderMetrics o
+INNER JOIN Warehouse.StockItems si
+    ON o.StockItemID = si.StockItemID
+INNER JOIN Warehouse.StockItemHoldings sih
+    ON si.StockItemID = sih.StockItemID
+GROUP BY si.StockItemName
+ORDER BY Profit DESC;
 
--- Which are the most profitable products,
--- in terms of total profit over all time?
-WITH orders AS
-(
-	SELECT
-		ol.StockItemID,
-		SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
-)
-SELECT
-	si.StockItemName,
-	SUM(o.Revenue) AS Revenue,
-	SUM(o.Quantity * sih.LastCostPrice) AS Cost,
-	SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS Profit
-FROM Warehouse.StockItems si
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN orders o
-		ON si.StockItemID = o.StockItemID
-GROUP BY
-	si.StockItemName
-ORDER BY
-	Profit DESC;
 
--- Can we get per-item rev/cost/profit as well as total rev/cost/profit?
--- We can calculate a total using an aggregate window function.
--- We know it's a window function because of the OVER clause.
--- This particular window function just gives us totals.
--- Note the DISTINCT clause--that's here because the window function
--- *result* is an aggregate but does not require that the result set be aggregated!
-WITH orders AS
+/* Step 4: Per-item revenue, cost, profit with totals */
+WITH OrderMetrics AS
 (
-	SELECT
-		ol.StockItemID,
-		SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
-)
-SELECT DISTINCT
-	si.StockItemName,
-	SUM(o.Revenue) OVER () AS TotalRevenue,
-	SUM(o.Quantity * sih.LastCostPrice) OVER () AS TotalCost,
-	SUM(o.Revenue) OVER () - SUM(o.Quantity * sih.LastCostPrice) OVER () AS TotalProfit
-FROM Warehouse.StockItems si
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN orders o
-		ON si.StockItemID = o.StockItemID;
-
--- If we try to mix an aggregate window function with normal aggregations,
--- we get a runtime error.  This query won't work as-is.
-WITH orders AS
-(
-	SELECT
-		ol.StockItemID,
-		SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
-)
-SELECT
-	si.StockItemName,
-	SUM(o.Revenue) AS Revenue,
-	SUM(o.Quantity * sih.LastCostPrice) AS Cost,
-	SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS Profit,
-	SUM(o.Revenue) OVER () AS TotalRevenue,
-	SUM(o.Quantity * sih.LastCostPrice) OVER () AS TotalCost,
-	SUM(o.Revenue) OVER () - SUM(o.Quantity * sih.LastCostPrice) OVER () AS TotalProfit
-FROM Warehouse.StockItems si
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN orders o
-		ON si.StockItemID = o.StockItemID
-GROUP BY
-	si.StockItemName
-ORDER BY
-	Profit DESC;
-
--- Fortunately, revenue, cost, and profit are additive!
--- This means that we can summarize the results in any order,
--- including taking aggregations of aggregations.
-WITH orders AS
-(
-	SELECT
-		ol.StockItemID,
-		SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
+    SELECT
+        ol.StockItemID,
+        SUM(ol.UnitPrice * ol.Quantity) AS Revenue,
+        SUM(ol.Quantity) AS Quantity
+    FROM Sales.OrderLines ol
+    GROUP BY ol.StockItemID
 ),
-metrics AS
+Metrics AS
 (
-	SELECT
-		si.StockItemName,
-		SUM(o.Revenue) AS Revenue,
-		SUM(o.Quantity * sih.LastCostPrice) AS Cost,
-		SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS Profit
-	FROM Warehouse.StockItems si
-		INNER JOIN Warehouse.StockItemHoldings sih
-			ON si.StockItemID = sih.StockItemID
-		INNER JOIN orders o
-			ON si.StockItemID = o.StockItemID
-	GROUP BY
-		si.StockItemName
+    SELECT
+        si.StockItemName,
+        SUM(o.Revenue) AS Revenue,
+        SUM(o.Quantity * sih.LastCostPrice) AS Cost,
+        SUM(o.Revenue) - SUM(o.Quantity * sih.LastCostPrice) AS Profit
+    FROM OrderMetrics o
+    INNER JOIN Warehouse.StockItems si
+        ON o.StockItemID = si.StockItemID
+    INNER JOIN Warehouse.StockItemHoldings sih
+        ON si.StockItemID = sih.StockItemID
+    GROUP BY si.StockItemName
 )
 SELECT
-	m.StockItemName,
-	m.Revenue,
-	m.Cost,
-	m.Profit,
-	SUM(m.Revenue) OVER () AS TotalRevenue,
-	SUM(m.Cost) OVER () AS TotalCost,
-	SUM(m.Profit) OVER () AS TotalProfit
-FROM metrics m
-ORDER BY
-	Profit DESC;
+    m.StockItemName,
+    CAST(m.Revenue AS DECIMAL(18,2)) AS Revenue,
+    CAST(m.Cost AS DECIMAL(18,2)) AS Cost,
+    CAST(m.Profit AS DECIMAL(18,2)) AS Profit,
+    CAST(SUM(m.Revenue) OVER () AS DECIMAL(18,2)) AS TotalRevenue,
+    CAST(SUM(m.Cost) OVER () AS DECIMAL(18,2)) AS TotalCost,
+    CAST(SUM(m.Profit) OVER () AS DECIMAL(18,2)) AS TotalProfit
+FROM Metrics m
+ORDER BY Profit DESC;
