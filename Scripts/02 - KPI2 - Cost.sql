@@ -1,94 +1,90 @@
-USE [WideWorldImporters]
+USE [WideWorldImporters];
 GO
-/* KPI 2:  Cost */
 
--- Estimate cost of goods sold
--- This is a lot harder to do in Wide World Importers than we'd hope!
+/* ============================================================
+   KPI 2: Cost of Goods Sold (COGS)
+   ============================================================
+   Steps:
+   1. Aggregate quantity sold per StockItemID
+   2. Join to StockItems and StockItemHoldings
+   3. Calculate cost per item and total cost
+   ============================================================
+*/
 
--- We can use a Common Table Expression (CTE) to act as a subquery
--- CTEs take the following shape:  WITH cteName AS ()
--- We can reference the results of a CTE as though it were a table
--- Note that CTEs are not materialized (unlike Oracle/Postgres)
-
--- We want the quantity per stock item ID and to multiply it by
--- latest cost price.  Step 1:  get quantity sold per stock item:
-SELECT
-	ol.StockItemID,
-	SUM(ol.Quantity) AS Quantity
+/* Step 1: Inspect raw quantities per stock item */
+SELECT 
+    ol.StockItemID,
+    SUM(ol.Quantity) AS TotalQuantity
 FROM Sales.OrderLines ol
-GROUP BY
-	ol.StockItemID;
+GROUP BY ol.StockItemID
+ORDER BY ol.StockItemID;
 
--- To use this, we'll wrap it in a CTE
-WITH orders AS
+/* Step 2: Create a CTE for total quantity sold per stock item */
+WITH OrderQuantities AS
 (
-	SELECT
-		ol.StockItemID,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
+    SELECT
+        ol.StockItemID,
+        SUM(ol.Quantity) AS TotalQuantity
+    FROM Sales.OrderLines ol
+    GROUP BY ol.StockItemID
+)
+SELECT * 
+FROM OrderQuantities
+ORDER BY StockItemID;
+
+/* Step 3: Join CTE with StockItems and StockItemHoldings 
+   to calculate per-item cost */
+WITH OrderQuantities AS
+(
+    SELECT
+        ol.StockItemID,
+        SUM(ol.Quantity) AS TotalQuantity
+    FROM Sales.OrderLines ol
+    GROUP BY ol.StockItemID
 )
 SELECT
-	*
-FROM orders o;
+    si.StockItemID,
+    si.StockItemName,
+    sih.LastCostPrice,
+    o.TotalQuantity,
+    CAST(o.TotalQuantity * sih.LastCostPrice AS DECIMAL(18,2)) AS ItemCost
+FROM OrderQuantities o
+INNER JOIN Warehouse.StockItems si
+    ON o.StockItemID = si.StockItemID
+INNER JOIN Warehouse.StockItemHoldings sih
+    ON si.StockItemID = sih.StockItemID
+ORDER BY ItemCost DESC;
 
--- Now we can join the results to other tables
-WITH orders AS
+/* Step 4: Calculate total COGS across all items */
+WITH OrderQuantities AS
 (
-	SELECT
-		ol.StockItemID,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
+    SELECT
+        ol.StockItemID,
+        SUM(ol.Quantity) AS TotalQuantity
+    FROM Sales.OrderLines ol
+    GROUP BY ol.StockItemID
 )
 SELECT
-	si.StockItemID,
-	si.StockItemName,
-	sih.LastCostPrice,
-	o.Quantity,
-	o.Quantity * sih.LastCostPrice AS Cost
-FROM Warehouse.StockItems si
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN orders o
-		ON si.StockItemID = o.StockItemID;
+    CAST(SUM(o.TotalQuantity * sih.LastCostPrice) AS DECIMAL(18,2)) AS TotalCOGS
+FROM OrderQuantities o
+INNER JOIN Warehouse.StockItems si
+    ON o.StockItemID = si.StockItemID
+INNER JOIN Warehouse.StockItemHoldings sih
+    ON si.StockItemID = sih.StockItemID;
 
--- How much has WWI spent on COGS?
--- Note that we're aggregating on two separate levels.
--- Having an intermediary CTE makes it easier for us to do this.
-WITH orders AS
+/* Step 5: Bonus – format result for reporting */
+WITH OrderQuantities AS
 (
-	SELECT
-		ol.StockItemID,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
+    SELECT
+        ol.StockItemID,
+        SUM(ol.Quantity) AS TotalQuantity
+    FROM Sales.OrderLines ol
+    GROUP BY ol.StockItemID
 )
 SELECT
-	SUM(o.Quantity * sih.LastCostPrice) AS TotalCost
-FROM Warehouse.StockItems si
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN orders o
-		ON si.StockItemID = o.StockItemID;
-
--- Bonus: formatting
-WITH orders AS
-(
-	SELECT
-		ol.StockItemID,
-		SUM(ol.Quantity) AS Quantity
-	FROM Sales.OrderLines ol
-	GROUP BY
-		ol.StockItemID
-)
-SELECT
-	FORMAT(SUM(o.Quantity * sih.LastCostPrice), N'$0,###.##') AS TotalCost
-FROM Warehouse.StockItems si
-	INNER JOIN Warehouse.StockItemHoldings sih
-		ON si.StockItemID = sih.StockItemID
-	INNER JOIN orders o
-		ON si.StockItemID = o.StockItemID;
+    FORMAT(SUM(o.TotalQuantity * sih.LastCostPrice), 'C', 'en-US') AS TotalCOGS
+FROM OrderQuantities o
+INNER JOIN Warehouse.StockItems si
+    ON o.StockItemID = si.StockItemID
+INNER JOIN Warehouse.StockItemHoldings sih
+    ON si.StockItemID = sih.StockItemID;
