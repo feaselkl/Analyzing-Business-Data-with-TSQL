@@ -1,41 +1,47 @@
-USE [WideWorldImporters]
+USE [WideWorldImporters];
 GO
-/* KPI 1:  Revenue */
 
--- This script serves as a baseline of what I expect you to know:
--- SELECT, FROM, INNER JOIN, WHERE, GROUP BY, HAVING, ORDER BY
--- Aggregation and how it impacts non-aggregated columns
+/* ============================================================
+   KPI 1: Revenue Analysis
+   ============================================================
+   - Revenue per order line
+   - Total revenue per customer
+   - Customers with revenue under $150,000
+   ============================================================
+*/
 
--- Check out order lines table
-SELECT TOP(100) * FROM Sales.OrderLines;
+/* Step 1: Inspect OrderLines */
+SELECT TOP (100) *
+FROM Sales.OrderLines
+ORDER BY OrderLineID;
 
--- Calculate revenue per order line
+/* Step 2: Revenue per order line */
 SELECT
-	SUM(ol.UnitPrice * ol.Quantity) AS Revenue
-FROM Sales.OrderLines ol;
-
--- Calculate total revenue per customer
-SELECT
-	o.CustomerID,
-	SUM(ol.UnitPrice * ol.Quantity) AS Revenue
+    ol.OrderLineID,
+    ol.OrderID,
+    ol.UnitPrice,
+    ol.Quantity,
+    CAST(ol.UnitPrice * ol.Quantity AS DECIMAL(18,2)) AS Revenue
 FROM Sales.OrderLines ol
-	INNER JOIN Sales.Orders o
-		ON ol.OrderID = o.OrderID
-GROUP BY
-	o.CustomerID
-ORDER BY
-	Revenue DESC;
+ORDER BY ol.OrderLineID;
 
--- Find customers whose total revenue is under $150,000
+/* Step 3: Total revenue per customer */
 SELECT
-	o.CustomerID,
-	SUM(ol.UnitPrice * ol.Quantity) AS Revenue
+    o.CustomerID,
+    SUM(ol.UnitPrice * ol.Quantity) AS TotalRevenue
 FROM Sales.OrderLines ol
-	INNER JOIN Sales.Orders o
-		ON ol.OrderID = o.OrderID
-GROUP BY
-	o.CustomerID
-HAVING
-	SUM(ol.UnitPrice * ol.Quantity) < 150000
-ORDER BY
-	o.CustomerID ASC;
+INNER JOIN Sales.Orders o
+    ON ol.OrderID = o.OrderID
+GROUP BY o.CustomerID
+ORDER BY TotalRevenue DESC;
+
+/* Step 4: Customers with revenue under $150,000 */
+SELECT
+    o.CustomerID,
+    SUM(ol.UnitPrice * ol.Quantity) AS TotalRevenue
+FROM Sales.OrderLines ol
+INNER JOIN Sales.Orders o
+    ON ol.OrderID = o.OrderID
+GROUP BY o.CustomerID
+HAVING SUM(ol.UnitPrice * ol.Quantity) < 150000
+ORDER BY o.CustomerID ASC;
