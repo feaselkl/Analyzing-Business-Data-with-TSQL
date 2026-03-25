@@ -1,6 +1,10 @@
 USE [WideWorldImporters]
 GO
 /* KPI 12:  Top Customers by Month */
+-- Business Question: Who are our top customers for a given month,
+-- and how do we handle ties correctly?
+-- T-SQL Concepts: TOP, TOP WITH TIES, ROW_NUMBER, RANK, DENSE_RANK, PARTITION BY
+
 -- Who are the top 10 customers for the month of August, 2015
 -- in terms of number of orders?
 WITH CustomerResults AS
@@ -26,7 +30,9 @@ FROM CustomerResults cr
 ORDER BY
 	cr.NumberOfOrders DESC;
 
--- Were these the only ones with 7 orders?  
+-- Problem: TOP(10) arbitrarily cuts off ties. Were there other customers
+-- with the same order count who got left out?
+-- Were these the only ones with 7 orders?
 WITH CustomerResults AS
 (
 	SELECT
@@ -51,6 +57,8 @@ FROM CustomerResults cr
 ORDER BY
 	cr.NumberOfOrders DESC;
 
+-- TOP WITH TIES includes all rows that tie with the last row.
+-- This ensures we don't arbitrarily exclude customers with the same count.
 -- We *could* use WITH TIES here
 WITH CustomerResults AS
 (
@@ -75,11 +83,12 @@ FROM CustomerResults cr
 ORDER BY
 	cr.NumberOfOrders DESC;
 
+-- Ranking window functions give us more control over how we handle ties.
 -- Another way to perform these calculations:  ranking window functions.
 -- Three ranking window functions exist:  ROW_NUMBER(), RANK(), DENSE_RANK()
 -- (A fourth ranking function, NTILE(), also exists, but we'll ignore it today)
 
--- ROW_NUMBER() provides a monotonically increasing natural number for each row in the set.
+-- ROW_NUMBER() assigns sequential numbers (1, 2, 3, ...) to each row in the result.
 -- We must include an ORDER BY clause for ROW_NUMBER()
 SELECT TOP(50)
 	c.Date,
@@ -137,6 +146,10 @@ FROM CustomerResults cr
 ORDER BY
 	cr.NumberOfOrders DESC;
 
+-- Side-by-side comparison of the three ranking functions:
+-- ROW_NUMBER: 1, 2, 3, 4, 5 (ties broken arbitrarily)
+-- RANK:       1, 1, 3, 4, 5 (ties share rank, next rank skips)
+-- DENSE_RANK: 1, 1, 2, 3, 4 (ties share rank, next rank doesn't skip)
 -- If we want to handle ties, there are two additional ranking functions:
 -- RANK() and DENSE_RANK()
 -- RANK() shows ties like a race:  T-1, T-1, 3, 4, 5.
@@ -194,12 +207,12 @@ rankings AS
 			ON cr.CustomerID = sc.CustomerID
 )
 SELECT
-	[r].[CustomerID],
-	[r].[CustomerName],
-	[r].[NumberOfOrders],
-	[r].[RowNum],
-	[r].[Ranking],
-	[r].[DenseRanking]
+	r.CustomerID,
+	r.CustomerName,
+	r.NumberOfOrders,
+	r.RowNum,
+	r.Ranking,
+	r.DenseRanking
 FROM rankings r
 WHERE
 	r.Ranking <= 10

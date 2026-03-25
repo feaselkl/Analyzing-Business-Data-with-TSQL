@@ -1,3 +1,14 @@
+-- A calendar table (also called a date dimension) is a pre-built lookup table
+-- containing one row per date, with useful attributes like day name, month,
+-- fiscal year, and holidays already calculated.
+--
+-- Business Purpose: Calendar tables let us fill gaps in time series data,
+-- support fiscal year reporting, and avoid complex date math in every query.
+--
+-- NOTE: You typically build this table once and reuse it across projects.
+-- A modern alternative to the L0-L5 cross join pattern below is
+-- GENERATE_SERIES(1, N), available in SQL Server 2022+.
+
 USE [WideWorldImporters]
 GO
 IF (OBJECT_ID('dbo.Calendar') IS NULL)
@@ -64,6 +75,10 @@ BEGIN
 		@EndDate DATE = DATEADD(YEAR, @NumberOfYears, @StartDate);
  
 	WITH
+	-- Number generator: each level doubles the row count via CROSS JOIN.
+	-- L0 = 2 rows, L1 = 4, L2 = 16, L3 = 256, L4 = 65536, L5 = ~4 billion.
+	-- ROW_NUMBER() then assigns sequential numbers 1, 2, 3, ... to each row.
+	-- (In SQL Server 2022+, GENERATE_SERIES(1, N) is a simpler alternative.)
 	L0 AS(SELECT 1 AS c UNION ALL SELECT 1),
 	L1 AS(SELECT 1 AS c FROM L0 AS A CROSS JOIN L0 AS B),
 	L2 AS(SELECT 1 AS c FROM L1 AS A CROSS JOIN L1 AS B),
@@ -71,6 +86,7 @@ BEGIN
 	L4 AS(SELECT 1 AS c FROM L3 AS A CROSS JOIN L3 AS B),
 	L5 AS(SELECT 1 AS c FROM L4 AS A CROSS JOIN L4 AS B),
 	Nums AS(SELECT ROW_NUMBER() OVER(ORDER BY (SELECT 0)) AS n FROM L5)
+	-- (SELECT 0) is a placeholder — ROW_NUMBER requires ORDER BY but we don't care about order here.
 	INSERT INTO dbo.Calendar
 	(
 		DateKey,
@@ -156,6 +172,9 @@ BEGIN
 		fy.FYStart AS FiscalFirstDayOfYear,
 		MAX(d.[Date]) OVER (PARTITION BY fy.FYStart) AS FiscalLastDayOfYear,
 		DATEADD(YEAR, 1, fy.FYStart) AS FiscalFirstDayOfNextYear
+	-- CROSS APPLY runs a calculation for each row. Here it breaks each date into
+	-- its component parts (day, month, year, etc.) in stages for readability.
+	-- We'll cover CROSS APPLY in detail in a later script (KPI 8).
 	FROM Nums n
 		CROSS APPLY
 		(
@@ -191,7 +210,9 @@ BEGIN
 	WHERE
 		n.n <= DATEDIFF(DAY, @StartDate, @EndDate)
 	ORDER BY
-		[date] OPTION (MAXDOP 1);
+		[date]
+	-- MAXDOP 1 forces single-threaded execution to ensure correct row ordering.
+	OPTION (MAXDOP 1);
 END
 GO
 
@@ -574,6 +595,7 @@ BEGIN
 			ON hd.HolidayKey = h.HolidayKey;
 END
 GO
+-- Quick look at the calendar table we just built
 SELECT TOP(100) * FROM dbo.Calendar;
 GO
 -- Watch out for holiday clobbering!

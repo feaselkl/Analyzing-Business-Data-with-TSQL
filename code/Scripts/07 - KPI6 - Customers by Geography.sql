@@ -1,6 +1,9 @@
 USE [WideWorldImporters]
 GO
 /* KPI 6:  Customers by Geography */
+-- Business Question: Where are our new customers coming from, and how does
+-- acquisition vary by region over time?
+-- T-SQL Concepts: LAG/LEAD window functions, CROSS JOIN for dimensional matrices, calendar tables
 
 -- Overall customers by sales territory
 SELECT
@@ -68,6 +71,9 @@ ORDER BY
 	sp.SalesTerritory,
 	fco.FirstOrderMonth DESC;
 
+-- LAG(column, n) looks back n rows; LEAD(column, n) looks ahead n rows.
+-- PARTITION BY groups the window so LAG/LEAD only look within each territory.
+
 -- Use LAG() and LEAD() to look at other months
 -- LAG() allows us to look at the prior row
 -- LEAD() allows us to look at the next row
@@ -109,6 +115,11 @@ FROM NewCustomersBySalesTerritory n
 ORDER BY
 	n.SalesTerritory,
 	n.CalendarMonth;
+
+-- The fix: build a complete matrix of every territory x every month using CROSS JOIN,
+-- then LEFT JOIN our actual data onto it. Now LAG/LEAD always look at the correct month,
+-- even when a territory had zero new customers in a given month.
+-- ISNULL() replaces NULL (no data) with 0 for months with no new customers.
 
 -- The problem:  LAG() and LEAD() look at prior *records*, not prior *months*!
 -- The solution:  use a calendar table and create a matrix!

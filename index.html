@@ -19,11 +19,11 @@
 			<div class="slides">
 				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
 					<h2>Analyzing Business Data with T-SQL</h2>
-					
+
 					<a href="https://www.catallaxyservices.com">Kevin Feasel</a> (<a href="https://twitter.com/feaselkl">@feaselkl</a>)<br />
 					<a href="https://csmore.info/on/business">https://csmore.info/on/business</a>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
 					<h3>Who Am I?  What Am I Doing Here?</h3>
 					<div class="container">
@@ -47,59 +47,74 @@
 							<a href="http://www.twitter.com/feaselkl"><img src="../WebsiteAssets/HeadShot.jpg" height="358" width="315" /></a>
 							<br />
 							<a href="http://www.twitter.com/feaselkl">@feaselkl</a>
-						</div>					
+						</div>
 					</div>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/background/motivation.jpg" data-background-opacity="0.2">
 					<h3>Motivation</h3>
-					
-					<p>My goals in this talk:</p>
-					
-					<ul>
-						<li>Introduce the concept of key performance indicators (KPIs).</li>
-						<li>Describe common KPIs in the retail business space.</li>
-						<li>Show how to calculate these KPIs in T-SQL against an OLTP system.</li>
-						<li>Introduce great analytic functionality in T-SQL.</li>
-					</ul>
-				</section>
-				
-				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
-					<h3>What We'll Learn</h3>
-					
-					<img src="presentation/assets/image/KPI1.png" />
-				</section>
-				
-				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
-					<h3>What We'll Learn</h3>
-					
-					<img src="presentation/assets/image/KPI2.png" />
-				</section>
-				
-				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
-					<h3>What We'll Learn</h3>
-					
-					<img src="presentation/assets/image/KPI3.png" />
-				</section>
-				
-				<!-- TODO:  great demo -->
-				
-				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
-					<h3>Agenda</h3>
-					
+
+					<p>This talk is for developers, DBAs, and analysts who are comfortable with SELECT, JOIN, and GROUP BY and want to level up their T-SQL analytical skills.</p>
+
+					<p>You will leave with:</p>
+
 					<ol>
-						<li class="active">What is a KPI?</li>
-						<li>Dive into KPIs</li>
+						<li>A reusable calendar table you can drop into any SQL Server environment.</li>
+						<li>Five window function patterns for running totals, period comparison, and ranking.</li>
+						<li>The APPLY operator pattern for correlated subqueries that JOINs can't handle.</li>
 					</ol>
 				</section>
-				
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>T-SQL Techniques We'll Cover</h3>
+
+					<ul>
+						<li>Common Table Expressions (CTEs)</li>
+						<li>Window Functions (OVER, LAG, LEAD)</li>
+						<li>Ranking Functions (ROW_NUMBER, RANK, DENSE_RANK)</li>
+						<li>The APPLY Operator (CROSS APPLY, OUTER APPLY)</li>
+						<li>Calendar Tables and CROSS JOIN Matrices</li>
+						<li>DATETRUNC and Modern Date Functions</li>
+					</ul>
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>What We'll Learn</h3>
+
+					<img src="presentation/assets/image/KPI1.png" />
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>What We'll Learn</h3>
+
+					<img src="presentation/assets/image/KPI2.png" />
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>What We'll Learn</h3>
+
+					<img src="presentation/assets/image/KPI3.png" />
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>Agenda</h3>
+
+					<ol>
+						<li class="active">What is a KPI?</li>
+						<li>Financial KPIs</li>
+						<li>Customer KPIs</li>
+						<li>Sales KPIs</li>
+						<li>Avidity KPIs</li>
+					</ol>
+				</section>
+
 				<section data-background-image="presentation/assets/background/questions.jpg" data-background-opacity="0.2">
 					<h3>What is a Key Performance Indicator?</h3>
-					
+
 					<p>A key performance indicator (KPI) is a performance measurement of how well an organization is doing at achieving a specific goal.</p>
-					
+
 					<p>KPIs typically follow a pattern:</p>
-					
+
 					<ul>
 						<li>Numeric measurements</li>
 						<li>Tied to an asserted organizational goal</li>
@@ -108,71 +123,157 @@
 						<li>Has a specific grain</li>
 					</ul>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/background/wheat.jpg" data-background-opacity="0.2">
 					<h3>The Grain of a Measure</h3>
-					
+
 					<p>In the data warehousing world, we have the notion of a <strong>grain</strong>.  The grain of a fact (or measurement) is the maximum level of specificity for that measurement.  We usually define grain in terms of dimensions, explanatory information which helps provide relevant context to the fact.</p>
-					
+
 					<p>Ex:  what is the grain for orders at a grocery store?</p>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/background/bread-slices.jpg" data-background-opacity="0.2">
 					<h3>Grains and Granularity</h3>
-					
+
 					<p>Once we know the grain of our measure, we know we can't dig any deeper (without making certain potentially-scary assumptions).  We can, however, aggregate results and move up in our grain.</p>
-					
+
 					<p>We also cannot move "orthogonal" to an existing grain.  If we collect order data by customer and date, we cannot later aggregate this data by "missing" features like store location or register number.</p>
-					
+
 					<p>We can, however, aggregate if there is a mapping function from our initial grain to the new grain, such as from customer to customer's favorite color.</p>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/background/adding-calculator.jpg" data-background-opacity="0.2">
 					<h3>Aggregations and Additivity</h3>
-					
+
 					<p>We can aggregate any number, but some aggregations don't make sense.  There are three levels of additivity:</p>
-					
+
 					<ul>
 						<li>Additive -- We can sum up data rows without a problem.  Ex:  order revenue</li>
 						<li>Semi-additive -- We can sum up data rows along certain dimensions but not all dimensions.  Ex:  bank account balance</li>
 						<li>Non-additive -- We cannot sum up rows along any dimension.  Ex:  completion percentage, P/E ratio</li>
 					</ul>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/background/skeleton-thinking.jpg" data-background-opacity="0.2">
 					<h3>Facts, Measures, and KPIs</h3>
-					
+
 					<p>A <strong>fact</strong> is a record in a dataset which tells us about something which has happened.  A <strong>measure</strong> is some computation or explanation about the fact.  A <strong>KPI</strong> is a measure which ties back to business need.</p>
-					
+
 					<ul>
 						<li>Fact -- We made a sale to Alice on April 9, 2023.  We sold her 6 bags of red mulch at a price of $2.99 per bag.</li>
 						<li>Measure -- The total sale price, before tax, was $17.94.  We sold this at 1:28 PM.  Alice checked out at register 3.  The SKU of the red mulch is M123-A.</li>
 						<li>KPI -- Our store has sold $1,800 in red mulch during the month of April.  Our target for red mulch sales in April is 3,100.</li>
 					</ul>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
 					<h3>Agenda</h3>
 
 					<ol>
 						<li>What is a KPI?</li>
-						<li class="active">Dive into KPIs</li>
+						<li class="active">Financial KPIs</li>
+						<li>Customer KPIs</li>
+						<li>Sales KPIs</li>
+						<li>Avidity KPIs</li>
 					</ol>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
-					<h3>Dive into KPIs</h3>
-					
-					<p>From here on out, it's all KPIs all the time!  We will cover four main bases of KPI:</p>
-					
+					<h3>Financial KPIs</h3>
+
+					<p>Revenue, cost, and profit are <strong>additive</strong> measures -- we can sum them freely across any dimension.</p>
+
+					<ul>
+						<li><strong>Revenue</strong> -- Total sales from order lines (aggregation, GROUP BY, HAVING)</li>
+						<li><strong>Cost</strong> -- Estimated COGS using Common Table Expressions (CTEs)</li>
+						<li><strong>Profit</strong> -- Revenue minus cost, with window functions (OVER clause) for grand totals</li>
+					</ul>
+				</section>
+
+				<section data-background-image="presentation/assets/background/demo.jpg" data-background-opacity="0.2">
+					<h3>Demo Time</h3>
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>Agenda</h3>
+
 					<ol>
-						<li>Financial KPIs (revenue, cost, profit)</li>
-						<li>Customer KPIs (customer counts, customers by geography, customer retention rate)</li>
-						<li>Sales KPIs (time to first conversion)</li>
-						<li>Avidity KPIs (top customers by month)</li>
+						<li>What is a KPI?</li>
+						<li>Financial KPIs</li>
+						<li class="active">Customer KPIs</li>
+						<li>Sales KPIs</li>
+						<li>Avidity KPIs</li>
 					</ol>
-					
-					<p>Review the code repository for bonus KPIs as well!</p>
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>Customer KPIs</h3>
+
+					<p>Counting customers correctly means classifying their status over time.</p>
+
+					<ul>
+						<li><strong>Customer Counts</strong> -- New, retained, inactive, resurrected, or churned (DATETRUNC, CASE)</li>
+						<li><strong>Calendar Tables</strong> -- Fill gaps in time series with CROSS JOIN matrices</li>
+						<li><strong>Geography</strong> -- LAG/LEAD for period comparison; CROSS JOIN for month-to-month analysis</li>
+					</ul>
+				</section>
+
+				<section data-background-image="presentation/assets/background/demo.jpg" data-background-opacity="0.2">
+					<h3>Demo Time</h3>
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>Agenda</h3>
+
+					<ol>
+						<li>What is a KPI?</li>
+						<li>Financial KPIs</li>
+						<li>Customer KPIs</li>
+						<li class="active">Sales KPIs</li>
+						<li>Avidity KPIs</li>
+					</ol>
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>Sales KPIs</h3>
+
+					<p>How quickly do prospects convert to customers?</p>
+
+					<ul>
+						<li><strong>Time to First Conversion</strong> -- The APPLY operator (CROSS APPLY, OUTER APPLY)</li>
+						<li>APPLY runs a subquery once per row from the outer table</li>
+						<li>Chain multiple APPLY operations for readable calculations</li>
+					</ul>
+				</section>
+
+				<section data-background-image="presentation/assets/background/demo.jpg" data-background-opacity="0.2">
+					<h3>Demo Time</h3>
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>Agenda</h3>
+
+					<ol>
+						<li>What is a KPI?</li>
+						<li>Financial KPIs</li>
+						<li>Customer KPIs</li>
+						<li>Sales KPIs</li>
+						<li class="active">Avidity KPIs</li>
+					</ol>
+				</section>
+
+				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
+					<h3>Avidity KPIs</h3>
+
+					<p>Who are our most engaged customers?</p>
+
+					<ul>
+						<li><strong>Top Customers by Month</strong> -- TOP WITH TIES and ranking window functions</li>
+						<li>ROW_NUMBER vs RANK vs DENSE_RANK -- three ways to handle ties</li>
+						<li>PARTITION BY for per-group ranking within window functions</li>
+					</ul>
+
+					<p>Review the code repository for several bonus KPIs and techniques!</p>
 				</section>
 
 				<section data-background-image="presentation/assets/background/demo.jpg" data-background-opacity="0.2">
@@ -182,12 +283,20 @@
 				<section data-background-image="presentation/assets/background/wrappingup.jpg" data-background-opacity="0.2">
 					<h3>Wrapping Up</h3>
 
-					<p>Over the course of this talk, we introduced the concept of key performance indicators (KPIs).  We showed how to calculate a series of KPIs for a retail company using a variety of functions and capabilities in T-SQL, as well as a powerful calendar table.</p>
+					<p>Over the course of this talk, we have seen how to calculate a variety of KPIs for a retail company using T-SQL.  Along the way, we covered:</p>
+
+					<ul>
+						<li>Common Table Expressions for building queries in layers</li>
+						<li>Window functions for running totals and period-over-period comparison</li>
+						<li>The APPLY operator for correlated subqueries</li>
+						<li>Ranking functions for top-N analysis with proper tie handling</li>
+						<li>Calendar tables for filling gaps in time series data</li>
+					</ul>
 				</section>
-				
+
 				<section data-background-image="presentation/assets/image/Bubbles.jpg" data-background-opacity="0.4">
 					<h3>Wrapping Up</h3>
-					
+
 					<p>
 						To learn more, go here:
 						<br />
@@ -230,7 +339,7 @@
 				center: true,
 				hash: true,
 				transition: 'fade',
-				
+
 
 				// Learn about plugins: https://revealjs.com/plugins/
 				plugins: [ RevealZoom, RevealNotes, RevealSearch, RevealMarkdown, RevealHighlight, RevealMath, RevealMenu, RevealChart ]

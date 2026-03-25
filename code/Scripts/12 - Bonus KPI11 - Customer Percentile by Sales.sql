@@ -1,10 +1,19 @@
 USE [WideWorldImporters]
 GO
 /* KPI 11:  Customer Percentile by Sales */
+-- Business Question: How is revenue distributed across our customer base?
+-- Are most customers clustered together, or is there a wide spread?
+-- This is a bonus KPI — available in the repo for reference.
+-- T-SQL Concepts: APPROX_PERCENTILE_CONT (SQL Server 2022+), IQR calculation
+
+-- Percentiles tell us what value a given percentage of data falls below.
+-- P50 (the median) means half of customers have revenue below this number.
+-- P25 and P75 mark the lower and upper quartiles.
+-- IQR (Interquartile Range) = P75 - P25, measuring the spread of the middle 50%.
 
 -- Prior to 2022, we use PERCENTILE_CONT(), which is a window function
 -- APPROX_PERCENTILE_CONT() is a grouping function which is *much* faster
--- and guaranteed to be within ~1.33% or so of the real value
+-- and guaranteed to be within approximately 1.33% of the exact value
 WITH CustomerSales AS
 (
 	SELECT
@@ -28,15 +37,16 @@ Percentiles AS
 	FROM CustomerSales cs
 )
 SELECT
-	FORMAT(p.P00, N'$0,###.##') AS Minimum,
-	FORMAT(p.P25, N'$0,###.##') AS P25,
-	FORMAT(p.P50, N'$0,###.##') AS Median,
-	FORMAT(p.P75, N'$0,###.##') AS P75,
-	FORMAT(p.P95, N'$0,###.##') AS P95,
-	FORMAT(p.P100, N'$0,###.##') AS Maximum,
-	FORMAT(p.P75 - p.P25, N'$0,###.##') AS IQR
+	FORMAT(p.P00, N'$#,###.00') AS Minimum,
+	FORMAT(p.P25, N'$#,###.00') AS P25,
+	FORMAT(p.P50, N'$#,###.00') AS Median,
+	FORMAT(p.P75, N'$#,###.00') AS P75,
+	FORMAT(p.P95, N'$#,###.00') AS P95,
+	FORMAT(p.P100, N'$#,###.00') AS Maximum,
+	FORMAT(p.P75 - p.P25, N'$#,###.00') AS IQR
 FROM Percentiles p;
 
+-- Break down percentiles by sales territory to compare distributions.
 -- Now by sales territory
 WITH CustomerSales AS
 (
@@ -75,13 +85,13 @@ Percentiles AS
 SELECT
 	p.SalesTerritory,
 	p.NumberOfCustomers,
-	FORMAT(p.P00, N'$0,###.##') AS Minimum,
-	FORMAT(p.P25, N'$0,###.##') AS P25,
-	FORMAT(p.P50, N'$0,###.##') AS Median,
-	FORMAT(p.P75, N'$0,###.##') AS P75,
-	FORMAT(p.P95, N'$0,###.##') AS P95,
-	FORMAT(p.P100, N'$0,###.##') AS Maximum,
-	FORMAT(p.P75 - p.P25, N'$0,###.##') AS IQR
+	FORMAT(p.P00, N'$#,###.00') AS Minimum,
+	FORMAT(p.P25, N'$#,###.00') AS P25,
+	FORMAT(p.P50, N'$#,###.00') AS Median,
+	FORMAT(p.P75, N'$#,###.00') AS P75,
+	FORMAT(p.P95, N'$#,###.00') AS P95,
+	FORMAT(p.P100, N'$#,###.00') AS Maximum,
+	FORMAT(p.P75 - p.P25, N'$#,###.00') AS IQR
 FROM Percentiles p
 ORDER BY
 	SalesTerritory;

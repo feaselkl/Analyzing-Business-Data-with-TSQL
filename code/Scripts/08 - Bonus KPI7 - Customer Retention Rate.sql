@@ -8,6 +8,10 @@ GO
 -- Resurrected customer:  did not order in the prior month but did order in the given month
 -- Churned customer:  did not order in a given month or in the prior month
 
+-- Business Question: What is our customer retention rate over time?
+-- This is a bonus KPI — available in the repo for reference.
+-- T-SQL Concepts: CROSS JOIN with calendar table, LAG window function, multi-CTE pipeline
+
 -- Knowing about LAG() and building a calendar-customer matrix, we can perform a customer
 -- analysis over any time period, not just a single one.
 WITH FirstCustomerOrder AS
@@ -80,6 +84,8 @@ MonthlyCustomerStatus AS
 	GROUP BY
 		o.CalendarMonth
 )
+-- Retention rate = active customers this month / active customers last month.
+-- We use LAG() on the monthly totals to get last month's active count.
 SELECT
 	mo.CalendarMonth,
 	mo.NewCustomers,

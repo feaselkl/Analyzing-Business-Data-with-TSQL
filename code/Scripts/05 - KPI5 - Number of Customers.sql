@@ -1,6 +1,9 @@
 USE [WideWorldImporters]
 GO
 /* KPI 5: Number of Customers */
+-- Business Question: How many customers do we have in each status category
+-- (new, retained, inactive, resurrected, churned) for a given month?
+-- T-SQL Concepts: DATETRUNC, DATEADD, DATEDIFF, CTEs, CASE expressions, UNION ALL
 
 -- Let's say we want to know the beginning of the month based on the current date.
 -- Let's also say that the current date is 2015-07-16, because that's about as far as WWI data goes.
@@ -27,7 +30,7 @@ SELECT
 	DATEADD(MONTH, DATEDIFF(MONTH, 0, @MonthOfInterest), 0);
 GO
 
--- SQL Server 2022, by the way, offers a cleaner way of getting this.
+-- SQL Server 2022 offers a cleaner way of getting this.
 DECLARE
 	@MonthOfInterest DATE = '2015-07-16';
 
@@ -50,6 +53,10 @@ DECLARE
 
 -- Did we have an order in the prior month?
 -- We can use DATEADD() to find that out.
+-- IMPORTANT: The date conditions are in the ON clause (not WHERE) on purpose.
+-- With a LEFT JOIN, putting conditions in WHERE would filter out customers
+-- with no orders, turning it into an INNER JOIN. Keeping them in ON
+-- preserves all customers and just controls which orders match.
 SELECT
 	c.CustomerID,
 	COUNT(o.OrderID) AS NumberOfOrders
@@ -88,6 +95,11 @@ GO
 
 
 
+-- Now we combine the building blocks above into one query.
+-- We use three CTEs: one for each customer's first order month,
+-- one for whether each customer ordered in recent months,
+-- and one that pivots the monthly order data into columns.
+
 -- Now let's put it all together
 DECLARE
 	@MonthOfInterest DATE = DATETRUNC(MONTH, '2015-07-16');
@@ -124,6 +136,8 @@ MonthlyOrders AS
 	GROUP BY
 		c.CustomerID
 
+	-- UNION ALL stacks the results of two queries into one result set.
+	-- (UNION without ALL would remove duplicates, which we don't want here.)
 	UNION ALL
 
 	SELECT
@@ -145,6 +159,10 @@ OrderDetails AS
 (
 	SELECT
 		mo.CustomerID,
+		-- Pivot rows into columns: for each customer, pull LastMonthOrder
+		-- and PriorMonthOrder into separate columns.
+		-- MAX(CASE WHEN ...) is a common pivot pattern in T-SQL.
+		-- It picks the value from the matching row and ignores NULLs from non-matching rows.
 		MAX(CASE WHEN mo.MonthsAgo = 1 THEN HasOrder END) AS LastMonthOrder,
 		MAX(CASE WHEN mo.MonthsAgo = 2 THEN HasOrder END) AS PriorMonthOrder,
 		fco.FirstOrderMonth
@@ -155,6 +173,8 @@ OrderDetails AS
 		mo.CustomerID,
 		fco.FirstOrderMonth
 )
+-- Finally, we use CASE expressions to classify each customer
+-- based on their order history in the last two months.
 SELECT
 	COUNT(*) AS NumberOfCustomers,
 	SUM(CASE WHEN od.FirstOrderMonth = @MonthOfInterest THEN 1 ELSE 0 END) AS NewCustomers,
