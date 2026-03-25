@@ -15,7 +15,7 @@ The `code` folder includes a Dockerfile that builds a SQL Server 2025 instance w
 ```bash
 cd code
 docker build -t wwi-sql2025 .
-docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=YourStr0ngP@ssword" -p 1433:1433 wwi-sql2025
+docker run -d -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=YourStr0ngP@ssword" -p 1433:1433 wwi-sql2025
 ```
 
 Once the container is running, connect to `localhost,1433` with username `sa` and the password you specified.
